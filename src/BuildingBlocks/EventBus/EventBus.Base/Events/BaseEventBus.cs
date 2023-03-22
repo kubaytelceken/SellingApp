@@ -41,6 +41,7 @@ namespace EventBus.Base.Events
         public virtual void Dispose()
         {
             EventBusConfig = null;
+            subscriptionManager.Clear();
         }
 
         public async Task<bool> ProcessEvent(string eventName,string message)

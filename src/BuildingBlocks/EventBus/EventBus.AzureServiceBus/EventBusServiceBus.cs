@@ -67,7 +67,7 @@ namespace EventBus.AzureServiceBus
                 RegisterSubscriptionClientMessageHandler(subsciptionClient);
             }
 
-            _logger.LogInformation("Subscription to event {EventName} with {EventHandler}",eventName,typeof(TH).Name)
+            _logger.LogInformation("Subscription to event {EventName} with {EventHandler}", eventName, typeof(TH).Name);
             subscriptionManager.AddSubscription<T, TH>();
         }
 
@@ -94,7 +94,20 @@ namespace EventBus.AzureServiceBus
         }
         public override void UnSubscribe<T, TH>()
         {
-            throw new NotImplementedException();
+            var eventName = typeof(T).Name;
+            try
+            {
+                var subscriptionClient = CreateSubscriptionClient(eventName);
+                subscriptionClient.RemoveRuleAsync(eventName).GetAwaiter().GetResult();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("The messaging entity {eventName} Could not be found", eventName);
+               
+            }
+
+            _logger.LogInformation("Unsubscribing from event  {EventName}", eventName);
+            subscriptionManager.RemoveSubscription<T, TH>();
         }
 
         private void RemoveDefaultRule(SubscriptionClient subscriptionClient)
@@ -150,6 +163,15 @@ namespace EventBus.AzureServiceBus
         private SubscriptionClient CreateSubscriptionClient(string eventName)
         {
             return new SubscriptionClient(EventBusConfig.EventBusConnectionString, EventBusConfig.DefaultTopicName, GetSubName(eventName));
+        }
+
+        public override void Dispose()
+        {
+            base.Dispose();
+            _topicClient.CloseAsync().GetAwaiter().GetResult();
+            _managementClient.CloseAsync().GetAwaiter().GetResult();
+            _topicClient = null;
+            _managementClient = null;
         }
     }
 }
